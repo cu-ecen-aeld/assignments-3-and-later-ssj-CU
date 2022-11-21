@@ -1,0 +1,17 @@
+	
+%/
+	DIR *dp;
+	struct dirent *ep;
+	dp = opendir("./");
+	if (dp != NULL){
+		while (ep = readdir (dp))
+		i++;
+		(void) closedir(dp);
+	}
+	else{
+		perror("Couldnt open the directory");
+		syslog(LOG_ERR, "Error opening directory");
+		
+	printf ("The number of files are %d \n", i);
+	closelog();
+/%
