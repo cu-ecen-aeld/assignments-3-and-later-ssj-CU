@@ -1,4 +1,10 @@
 #include "systemcalls.h"
+#include "string.h"
+#include "sys/types.h"
+#include <fcntl.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 /**
  * @param cmd the command to execute with system()
@@ -16,6 +22,13 @@ bool do_system(const char *cmd)
  *   and return a boolean true if the system() call completed with success
  *   or false() if it returned a failure
 */
+    int ret = system(cmd);
+    
+    if (ret == -1){
+    	perror("Error Executing Command");
+        return false;
+    }
+
 
     return true;
 }
@@ -43,8 +56,12 @@ bool do_exec(int count, ...)
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
+       
     }
+    
     command[count] = NULL;
+    //printf("Command[%count] is %.*s\n",i, 50, command[count]);
+
     // this line is to avoid a compile warning before your implementation is complete
     // and may be removed
     command[count] = command[count];
@@ -59,18 +76,56 @@ bool do_exec(int count, ...)
  *
 */
 
-    va_end(args);
 
-    return true;
+    pid_t pid;
+    
+    pid = fork();
+    if(pid == -1) { 
+       perror("Error: Fork Failed with return value -1");
+       return false;
+    }
+
+    else if (pid ==0){ 
+        //printf("Attempting execv \n");
+        printf("Command[is %.*s\n", 50, command[count-1]);
+	int ret = execv(command[0], &command[0]);
+	if (ret == -1){
+	
+	    perror("Error: ecec faild with return value -1");
+	    return(false);
+	exit(-1);
+		
+		
+	}
+	va_end(args);
+	exit(-1);
+    }
+    
+    int status;
+    if (waitpid (pid, &status, 0) == -1) return false;
+   
+    else if ((WEXITSTATUS(status) == 0))
+    	return true;
+    //retval = WEXITSTATUS(status);
+    //printf("The return value is %i \n", retval);
+    
+    //if (retval == 0) return true;
+    	
+    else
+     return false;
+    
+    //return false;
+	
 }
-
 /**
 * @param outputfile - The full path to the file to write with command output.
 *   This file will be closed at completion of the function call.
 * All other parameters, see do_exec above
 */
+
 bool do_exec_redirect(const char *outputfile, int count, ...)
 {
+    //printf("Made it to redirect \n");
     va_list args;
     va_start(args, count);
     char * command[count+1];
@@ -84,16 +139,43 @@ bool do_exec_redirect(const char *outputfile, int count, ...)
     // and may be removed
     command[count] = command[count];
 
-
-/*
- * TODO
- *   Call execv, but first using https://stackoverflow.com/a/13784315/1446624 as a refernce,
- *   redirect standard out to a file specified by outputfile.
- *   The rest of the behaviour is same as do_exec()
- *
-*/
-
     va_end(args);
+    
 
-    return true;
+
+
+    int fd = open(outputfile, O_RDWR|O_TRUNC|O_CREAT, 0644);
+    //int fd = open(outputfile, 777);
+    if (fd < 0) printf("fd open error \n");
+  
+    int status;
+    pid_t pid;
+    
+    pid = fork();
+    if(pid == -1) { 
+       printf("Do_exec fork failed \n");
+       return false;
+    }
+
+    else if (pid ==0){ 
+        dup2(fd,1);
+        close(fd);
+        //printf("Attempting execv \n");
+	int ret = execv(command[0], command);
+	if ( ret  == -1){
+		printf("Do exec exev v failed \n");
+		return(false);
+	}
+
+	//exit(-1);
+    }
+    
+    waitpid (pid, &status, 0);
+    int retval = WEXITSTATUS(status);
+    //printf("The return value is %i \n", retval);
+    
+    if (retval == 0) return true;
+    	
+    else
+    	return false;
 }
